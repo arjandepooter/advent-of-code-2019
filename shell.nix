@@ -1,11 +1,28 @@
+{ nixpkgs ? import <nixpkgs> {}, compiler ? "default", doBenchmark ? false }:
+
 let
-  pkgs = import <nixpkgs> { };
-  inherit (pkgs) haskellPackages; 
-  project = pkgs.haskellPackages.callPackage ./default.nix { };
+
+  inherit (nixpkgs) pkgs;
+
+  f = { mkDerivation, base, containers, parsec, stdenv }:
+      mkDerivation {
+        pname = "advent-of-code2019";
+        version = "0.1.0.0";
+        src = ./.;
+        isLibrary = false;
+        isExecutable = true;
+        executableHaskellDepends = [ base containers parsec ];
+        license = stdenv.lib.licenses.mit;
+      };
+
+  haskellPackages = if compiler == "default"
+                       then pkgs.haskellPackages
+                       else pkgs.haskell.packages.${compiler};
+
+  variant = if doBenchmark then pkgs.haskell.lib.doBenchmark else pkgs.lib.id;
+
+  drv = variant (haskellPackages.callPackage f {});
+
 in
-  pkgs.stdenv.mkDerivation {
-    name = "shell";
-    buildInputs = project.env.nativeBuildInputs ++ [
-      haskellPackages.ghcid
-    ];
-  }
+
+  if pkgs.lib.inNixShell then drv.env else drv
