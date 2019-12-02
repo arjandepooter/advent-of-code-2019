@@ -1,3 +1,5 @@
+type IntProgram = [Int]
+
 splitOn :: Eq a => a -> [a] -> [[a]]
 splitOn sep = foldr folder []
   where
@@ -13,48 +15,54 @@ splitOn sep = foldr folder []
 replace :: Int -> a -> [a] -> [a]
 replace idx n l = take idx l ++ [n] ++ drop (idx + 1) l
 
-runProgram :: (Int, Int) -> [Int] -> [Int]
+getPosition :: Int -> IntProgram -> Int
+getPosition = flip (!!)
+
+getPointer :: Int -> IntProgram -> Int
+getPointer idx prog = getPosition (getPosition idx prog) prog
+
+runProgram :: (Int, Int) -> IntProgram -> IntProgram
 runProgram (noun, verb) = runProgram' 0 . replace 1 noun . replace 2 verb
   where
-    runProgram' :: Int -> [Int] -> [Int]
+    runProgram' :: Int -> IntProgram -> IntProgram
     runProgram' pos prog =
       let currentOp = prog !! pos
        in case currentOp of
             1 ->
               runProgram' (pos + 4) $
               replace
-                (prog !! (pos + 3))
-                ((prog !! (prog !! (pos + 1))) + (prog !! (prog !! (pos + 2))))
+                (getPosition (pos + 3) prog)
+                (getPointer (pos + 1) prog + getPointer (pos + 2) prog)
                 prog
             2 ->
               runProgram' (pos + 4) $
               replace
-                (prog !! (pos + 3))
-                ((prog !! (prog !! (pos + 1))) * (prog !! (prog !! (pos + 2))))
+                (getPosition (pos + 3) prog)
+                (getPointer (pos + 1) prog * getPointer (pos + 2) prog)
                 prog
             _ -> prog
 
-solve1 :: [Int] -> Int
+solve1 :: IntProgram -> Int
 solve1 = head . runProgram (12, 2)
 
-solve2 :: [Int] -> Int
+solve2 :: IntProgram -> Int
 solve2 prog =
-  case foldl
+  case foldr
          folder
          Nothing
          [(noun, verb) | noun <- [0 .. 99], verb <- [0 .. 99]] of
     Just (noun, verb) -> noun * 100 + verb
-    _                 -> undefined
+    _                 -> error "No solution found"
   where
-    folder :: Maybe (Int, Int) -> (Int, Int) -> Maybe (Int, Int)
-    folder (Just x) _ = Just x
-    folder _ n =
+    folder :: (Int, Int) -> Maybe (Int, Int) -> Maybe (Int, Int)
+    folder _ (Just x) = Just x
+    folder n _ =
       let result = runProgram n prog
        in if head result == 19690720
             then Just n
             else Nothing
 
-parseInput :: String -> [Int]
+parseInput :: String -> IntProgram
 parseInput = fmap read . splitOn ','
 
 main :: IO ()
