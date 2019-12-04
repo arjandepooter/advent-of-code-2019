@@ -1,5 +1,6 @@
 import           Control.Monad      (liftM2)
 import           Data.Maybe         (fromJust)
+import           Debug.Trace        (trace)
 import           Text.Parsec        hiding (Line, between)
 import           Text.Parsec.String (Parser)
 
@@ -70,7 +71,23 @@ solve1 (w1, w2) =
       ]
 
 solve2 :: ([Segment], [Segment]) -> Int
-solve2 (w1, w2) = undefined
+solve2 (w1, w2) =
+  minimum .
+  filter (> 0) .
+  fmap (intersectLength . fmap fromJust) . filter (not . null . snd) $
+  intersections
+  where
+    intersections =
+      [ (((ls1, l1), (ls2, l2)), l1 `intersect` l2)
+      | (ls1, l1) <- linesWithLength w1
+      , (ls2, l2) <- linesWithLength w2
+      ]
+    intersectLength :: (((Int, Line), (Int, Line)), Position) -> Int
+    intersectLength (((l1, Line start1 _), (l2, Line start2 _)), pos) =
+      l1 + l2 + distance start1 pos + distance start2 pos
+
+distance :: Position -> Position -> Int
+distance (x1, y1) (x2, y2) = abs (x1 - x2) + abs (y1 - y2)
 
 between :: Ord a => a -> a -> a -> Bool
 between n1 n2 n = (n1 <= n && n <= n2) || (n2 <= n && n <= n1)
@@ -96,11 +113,14 @@ lineFromSegment (x, y) (Segment d l) = Line (x, y) (x + dx, y + dy)
         _   -> 0
 
 linesFromSegments :: [Segment] -> [Line]
-linesFromSegments = foldl f []
+linesFromSegments = reverse . snd . foldl f ((0, 0), [])
   where
-    f [] s                    = [lineFromSegment (0, 0) s]
-    f (Line start end:tail) s = lineFromSegment end s : Line start end : tail
+    f :: (Position, [Line]) -> Segment -> (Position, [Line])
+    f (pos, lines) s =
+      let Line start end = lineFromSegment pos s
+       in (end, Line start end : lines)
 
-linesWithLength :: Position -> [Segment] -> [(Int, Line)]
-linesWithLength _ []                 = []
-linesWithLength p (Segment d l:rest) = undefined
+linesWithLength :: [Segment] -> [(Int, Line)]
+linesWithLength segs = zip (scanl f 0 segs) (linesFromSegments segs)
+  where
+    f n (Segment _ l) = n + l
