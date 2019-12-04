@@ -60,18 +60,17 @@ main = do
 --- Solutions
 solve1 :: ([Segment], [Segment]) -> Int
 solve1 (w1, w2) =
-  minimum .
-  filter (> 0) . fmap (uncurry (+)) . fmap fromJust . filter (not . null) $
+  minimum . filter (> 0) . fmap (uncurry (+) . fromJust) . filter (not . null) $
   intersections
   where
     intersections =
       [ l1 `intersect` l2
-      | l1 <- linesFromSegments (0, 0) w1
-      , l2 <- linesFromSegments (0, 0) w2
+      | l1 <- linesFromSegments w1
+      , l2 <- linesFromSegments w2
       ]
 
 solve2 :: ([Segment], [Segment]) -> Int
-solve2 = const 1
+solve2 (w1, w2) = undefined
 
 between :: Ord a => a -> a -> a -> Bool
 between n1 n2 n = (n1 <= n && n <= n2) || (n2 <= n && n <= n1)
@@ -82,10 +81,8 @@ intersect (Line (v1, w1) (v2, w2)) (Line (x1, y1) (x2, y2))
   | x1 == x2 && w1 == w2 && between v1 v2 x1 && between y1 y2 w1 = Just (x1, w1)
   | otherwise = Nothing
 
-linesFromSegments :: Position -> [Segment] -> [Line]
-linesFromSegments _ [] = []
-linesFromSegments (x, y) (Segment d l:rest) =
-  Line (x, y) (x + dx, y + dy) : linesFromSegments (x + dx, y + dy) rest
+lineFromSegment :: Position -> Segment -> Line
+lineFromSegment (x, y) (Segment d l) = Line (x, y) (x + dx, y + dy)
   where
     dx =
       case d of
@@ -97,3 +94,13 @@ linesFromSegments (x, y) (Segment d l:rest) =
         Up  -> l
         Dwn -> -l
         _   -> 0
+
+linesFromSegments :: [Segment] -> [Line]
+linesFromSegments = foldl f []
+  where
+    f [] s                    = [lineFromSegment (0, 0) s]
+    f (Line start end:tail) s = lineFromSegment end s : Line start end : tail
+
+linesWithLength :: Position -> [Segment] -> [(Int, Line)]
+linesWithLength _ []                 = []
+linesWithLength p (Segment d l:rest) = undefined
