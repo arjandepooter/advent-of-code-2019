@@ -4,7 +4,7 @@
 import           Control.Monad.State
 import           Data.Char           (digitToInt)
 import           Data.Sequence       (Seq (..), fromList, index, update)
-import           Debug.Trace         (trace)
+import           Prelude             hiding (compare)
 
 type Pointer = Int
 
@@ -49,11 +49,19 @@ argOp :: ArgMode -> (Program -> Pointer -> Int)
 argOp Immediate = (-->)
 argOp Position  = (*->)
 
+getArg :: [ArgMode] -> Int -> State Runtime Int
+getArg argModes offset = do
+  Runtime {program, pointer} <- get
+  let argPointer = pointer + 1 + offset
+  let argMode = argModes !! offset
+  let op = argOp argMode
+  return (program `op` argPointer)
+
 mathOperation :: (Int -> Int -> Int) -> [ArgMode] -> State Runtime Bool
 mathOperation op argModes = do
   Runtime {..} <- get
-  let arg1 = argOp (head argModes) program (pointer + 1)
-  let arg2 = argOp (argModes !! 1) program (pointer + 2)
+  arg1 <- getArg argModes 0
+  arg2 <- getArg argModes 1
   let target = program --> (pointer + 3)
   let newProgram = update target (arg1 `op` arg2) program
   put (Runtime newProgram (pointer + 4) inputs outputs)
@@ -63,7 +71,7 @@ exit :: [ArgMode] -> State Runtime Bool
 exit = const (return True)
 
 input :: [ArgMode] -> State Runtime Bool
-input _ = do
+input argModes = do
   Runtime {..} <- get
   let (ip:ips) = inputs
   let target = program --> (pointer + 1)
@@ -72,10 +80,38 @@ input _ = do
   return False
 
 output :: [ArgMode] -> State Runtime Bool
-output (argMode:_) = do
+output argModes = do
   Runtime {..} <- get
-  let value = argOp argMode program (pointer + 1)
+  value <- getArg argModes 0
   put (Runtime program (pointer + 2) inputs (value : outputs))
+  return False
+
+jumpIf :: Bool -> [ArgMode] -> State Runtime Bool
+jumpIf cmp argModes = do
+  Runtime {..} <- get
+  arg1 <- getArg argModes 0
+  arg2 <- getArg argModes 1
+  let newPointer =
+        if (arg1 /= 0) == cmp
+          then arg2
+          else pointer + 3
+  put (Runtime program newPointer inputs outputs)
+  return False
+
+compare :: (Int -> Int -> Bool) -> [ArgMode] -> State Runtime Bool
+compare cmp argModes = do
+  Runtime {..} <- get
+  arg1 <- getArg argModes 0
+  arg2 <- getArg argModes 1
+  let target = program --> pointer + 3
+  let newProgram =
+        update
+          target
+          (if arg1 `cmp` arg2
+             then 1
+             else 0)
+          program
+  put (Runtime newProgram (pointer + 4) inputs outputs)
   return False
 
 opcodeCommand :: Opcode -> ([ArgMode] -> State Runtime Bool)
@@ -85,6 +121,10 @@ opcodeCommand opcode =
     2  -> mathOperation (*)
     3  -> input
     4  -> output
+    5  -> jumpIf True
+    6  -> jumpIf False
+    7  -> compare (<)
+    8  -> compare (==)
     99 -> exit
     _  -> error $ "Unknown opcode found: " ++ show opcode
 
@@ -111,6 +151,9 @@ runProgram inputs prg = evalState runUntilFinished (Runtime prg 0 inputs [])
 solve1 :: Program -> Int
 solve1 = head . runProgram [1]
 
+solve2 :: Program -> Int
+solve2 = head . runProgram [5]
+
 splitOn :: Eq a => a -> [a] -> [[a]]
 splitOn sep = foldr folder []
   where
@@ -130,3 +173,4 @@ main :: IO ()
 main = do
   prog <- parseInput <$> getContents
   print $ solve1 prog
+  print $ solve2 prog
