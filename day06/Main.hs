@@ -1,6 +1,8 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
+import           AOC.Utils           (splitOn)
 import           Control.Applicative ((<|>))
+import           Data.Foldable       (asum)
 import           Data.Map.Lazy       (empty, findWithDefault, fromListWith)
 import           Data.Maybe          (fromMaybe)
 import           Data.Tree           (Tree (..), levels, unfoldTree)
@@ -15,7 +17,7 @@ findPath :: Eq a => a -> Tree a -> Maybe [a]
 findPath needle Node {rootLabel, subForest} =
   if needle == rootLabel
     then Just []
-    else (rootLabel :) <$> foldr (<|>) Nothing (findPath needle <$> subForest)
+    else (rootLabel :) <$> asum (findPath needle <$> subForest)
 
 stripEqual :: Eq a => [a] -> [a] -> ([a], [a])
 stripEqual a [] = (a, [])
@@ -38,18 +40,6 @@ solve2 ls = length . uncurry (++) $ stripEqual path1 path2
 
 parseLine :: String -> (String, String)
 parseLine = (\(s1:s2:_) -> (s1, s2)) . splitOn ')'
-
-splitOn :: Eq a => a -> [a] -> [[a]]
-splitOn sep = foldr folder []
-  where
-    folder cur [] =
-      if cur == sep
-        then [[]]
-        else [[cur]]
-    folder cur (curPart:rest) =
-      if cur == sep
-        then [] : curPart : rest
-        else (cur : curPart) : rest
 
 main :: IO ()
 main = do
