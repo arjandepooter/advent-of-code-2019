@@ -8,6 +8,7 @@ module AOC.IntComputer
   , runProgram
   , runUntilOutput
   , parseInput
+  , initialize
   ) where
 
 import           AOC.Utils           (splitOn)
@@ -67,14 +68,39 @@ getArg argModes offset = do
   let op = argOp argMode
   return (program `op` argPointer)
 
+movePointer :: Int -> State Runtime ()
+movePointer newPointer = do
+  Runtime {..} <- get
+  put (Runtime program newPointer inputs outputs)
+  return ()
+
+updateProgram :: Program -> State Runtime ()
+updateProgram newProgram = do
+  Runtime {..} <- get
+  put (Runtime newProgram pointer inputs outputs)
+
+popInput :: State Runtime Int
+popInput = do
+  Runtime {..} <- get
+  let (ip:ips) = inputs
+  put (Runtime program pointer ips outputs)
+  return ip
+
+addOutput :: Int -> State Runtime ()
+addOutput o = do
+  Runtime {..} <- get
+  put (Runtime program pointer inputs (o : outputs))
+  return ()
+
 mathOperation :: (Int -> Int -> Int) -> [ArgMode] -> State Runtime Bool
 mathOperation op argModes = do
-  Runtime {..} <- get
+  Runtime {program, pointer} <- get
   arg1 <- getArg argModes 0
   arg2 <- getArg argModes 1
   let target = program --> (pointer + 3)
   let newProgram = update target (arg1 `op` arg2) program
-  put (Runtime newProgram (pointer + 4) inputs outputs)
+  updateProgram newProgram
+  movePointer (pointer + 4)
   return False
 
 exit :: [ArgMode] -> State Runtime Bool
@@ -82,35 +108,37 @@ exit = const (return True)
 
 input :: [ArgMode] -> State Runtime Bool
 input argModes = do
-  Runtime {..} <- get
-  let (ip:ips) = inputs
+  Runtime {pointer, program} <- get
+  ip <- popInput
   let target = program --> (pointer + 1)
   let newProgram = update target ip program
-  put (Runtime newProgram (pointer + 2) ips outputs)
+  movePointer (pointer + 2)
+  updateProgram newProgram
   return False
 
 output :: [ArgMode] -> State Runtime Bool
 output argModes = do
-  Runtime {..} <- get
+  Runtime {pointer} <- get
   value <- getArg argModes 0
-  put (Runtime program (pointer + 2) inputs (value : outputs))
+  addOutput value
+  movePointer (pointer + 2)
   return False
 
 jumpIf :: Bool -> [ArgMode] -> State Runtime Bool
 jumpIf cmp argModes = do
-  Runtime {..} <- get
+  Runtime {pointer} <- get
   arg1 <- getArg argModes 0
   arg2 <- getArg argModes 1
   let newPointer =
         if (arg1 /= 0) == cmp
           then arg2
           else pointer + 3
-  put (Runtime program newPointer inputs outputs)
+  movePointer newPointer
   return False
 
 compare :: (Int -> Int -> Bool) -> [ArgMode] -> State Runtime Bool
 compare cmp argModes = do
-  Runtime {..} <- get
+  Runtime {pointer, program} <- get
   arg1 <- getArg argModes 0
   arg2 <- getArg argModes 1
   let target = program --> pointer + 3
@@ -121,7 +149,8 @@ compare cmp argModes = do
              then 1
              else 0)
           program
-  put (Runtime newProgram (pointer + 4) inputs outputs)
+  updateProgram newProgram
+  movePointer (pointer + 4)
   return False
 
 opcodeCommand :: Opcode -> ([ArgMode] -> State Runtime Bool)
@@ -165,8 +194,11 @@ runUntilOutput = do
            then runUntilOutput
            else return False
 
+initialize :: Program -> [Int] -> Runtime
+initialize prg = flip (Runtime prg 0) []
+
 runProgram :: [Int] -> Program -> [Int]
-runProgram inputs prg = evalState runUntilFinished (Runtime prg 0 inputs [])
+runProgram inputs prg = evalState runUntilFinished (initialize prg inputs)
 
 parseInput :: String -> Program
 parseInput = fromList . fmap read . splitOn ','
