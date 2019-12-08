@@ -1,5 +1,6 @@
 module AOC.Utils
   ( splitOn
+  , chunksOf
   ) where
 
 splitOn :: Eq a => a -> [a] -> [[a]]
@@ -13,3 +14,9 @@ splitOn sep = foldr folder []
       if cur == sep
         then [] : curPart : rest
         else (cur : curPart) : rest
+
+chunksOf :: Int -> [a] -> [[a]]
+chunksOf size l =
+  if length l <= size
+    then [l]
+    else (take size l : chunksOf size (drop size l))
