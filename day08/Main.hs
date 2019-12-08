@@ -1,6 +1,7 @@
 import           AOC.Utils     (chunksOf)
 import           Control.Monad (join)
 import           Data.Char     (digitToInt)
+import           Data.Foldable (minimumBy)
 import           Data.List     (intersperse, transpose)
 import           Data.Monoid
 
@@ -42,15 +43,11 @@ showImage :: Int -> [Pixel] -> String
 showImage w = join . intersperse "\n" . fmap (show =<<) . chunksOf w
 
 solve1 :: [Int] -> Int
-solve1 = snd . foldl f (150, 0) . chunksOf (25 * 6)
-  where
-    f :: (Int, Int) -> [Int] -> (Int, Int)
-    f (mn, result) layer =
-      if zeroCount < mn
-        then (zeroCount, count 1 layer * count 2 layer)
-        else (mn, result)
-      where
-        zeroCount = count 0 layer
+solve1 =
+  snd .
+  minimumBy (\(c1, _) (c2, _) -> compare c1 c2) .
+  fmap (\layer -> (count 0 layer, count 1 layer * count 2 layer)) .
+  chunksOf (25 * 6)
 
 solve2 :: [Int] -> String
 solve2 = showImage 25 . decodeImage . chunksOf (25 * 6)
