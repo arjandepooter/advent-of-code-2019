@@ -3,7 +3,10 @@
 
 module AOC.IntComputer
   ( Program
+  , Runtime(..)
+  , runCommand
   , runProgram
+  , runUntilOutput
   , parseInput
   ) where
 
@@ -151,6 +154,16 @@ runUntilFinished = do
       Runtime {outputs} <- get
       return outputs
     else runUntilFinished
+
+runUntilOutput :: State Runtime Bool
+runUntilOutput = do
+  finished <- runCommand
+  Runtime {outputs} <- get
+  if finished
+    then return True
+    else if null outputs
+           then runUntilOutput
+           else return False
 
 runProgram :: [Int] -> Program -> [Int]
 runProgram inputs prg = evalState runUntilFinished (Runtime prg 0 inputs [])
