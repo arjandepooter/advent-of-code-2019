@@ -4,14 +4,14 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, base, containers, parsec, stdenv }:
+  f = { mkDerivation, base, containers, hspec, parsec, stdenv }:
       mkDerivation {
         pname = "advent-of-code2019";
         version = "0.1.0.0";
         src = ./.;
         isLibrary = false;
         isExecutable = true;
-        executableHaskellDepends = [ base containers parsec ];
+        executableHaskellDepends = [ base containers hspec parsec ];
         license = stdenv.lib.licenses.mit;
       };
 
