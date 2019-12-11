@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 import           AOC.IntComputer
 import           AOC.Utils           (splitOn)
 import           Control.Monad.State (runState)
@@ -9,8 +7,7 @@ runAmplifier :: Program -> [Int] -> Int
 runAmplifier prg = foldl (\p s -> head $ runProgram [s, p] prg) 0
 
 setInput :: Runtime -> [Int] -> Runtime
-setInput Runtime {..} ips =
-  Runtime memory pointer relativeBase (inputs ++ ips) outputs
+setInput rt ips = rt {inputs = inputs rt ++ ips}
 
 runAmplifierLoop :: Program -> [Int] -> Int
 runAmplifierLoop prg codes =
@@ -22,9 +19,9 @@ runAmplifierLoop prg codes =
     runtimes = fmap (initialize prg . return) codes
     f :: (Int, Bool, [Runtime]) -> a -> (Int, Bool, [Runtime])
     f (input, _, rt:rts) _ =
-      let (finished, Runtime {..}) =
+      let ((output, finished), rt') =
             runState runUntilOutput (setInput rt [input])
-       in (head outputs, finished, rts ++ [Runtime memory pointer 0 [] []])
+       in (output, finished, rts ++ [rt' {outputs = [], inputs = []}])
 
 solve1 :: Program -> Int
 solve1 prg = maximum $ fmap (runAmplifier prg) (permutations [0 .. 4])

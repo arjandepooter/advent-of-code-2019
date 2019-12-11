@@ -26,7 +26,7 @@ type Pointer = Int
 
 type Opcode = Int
 
-type Operation = State Runtime Bool
+type Operation = State Runtime ()
 
 type Program = [Int]
 
@@ -48,6 +48,7 @@ data Runtime =
     { memory       :: Memory
     , pointer      :: Pointer
     , relativeBase :: Int
+    , finished     :: Bool
     , inputs       :: [Int]
     , outputs      :: [Int]
     }
@@ -104,44 +105,34 @@ writeTarget target value = do
   Runtime {memory} <- get
   let newMemory = alter (const $ Just value) target memory
   updateMemory newMemory
-  return ()
 
 movePointer :: Int -> State Runtime ()
-movePointer newPointer = do
-  Runtime {..} <- get
-  put (Runtime memory newPointer relativeBase inputs outputs)
-  return ()
+movePointer newPointer = get >>= (\rt -> put rt {pointer = newPointer})
 
 updateMemory :: Memory -> State Runtime ()
-updateMemory newMemory = do
-  Runtime {..} <- get
-  put (Runtime newMemory pointer relativeBase inputs outputs)
+updateMemory newMemory = get >>= (\rt -> put rt {memory = newMemory})
 
 popInput :: State Runtime Int
 popInput = do
-  Runtime {..} <- get
-  let (ip:ips) = inputs
-  put (Runtime memory pointer relativeBase ips outputs)
+  rt <- get
+  let (ip:ips) = inputs rt
+  put rt {inputs = ips}
   return ip
 
 addOutput :: Int -> State Runtime ()
-addOutput o = do
-  Runtime {..} <- get
-  put (Runtime memory pointer relativeBase inputs (o : outputs))
-  return ()
+addOutput o = get >>= (\rt -> put rt {outputs = o : outputs rt})
 
 mathOperation :: (Int -> Int -> Int) -> Operation
 mathOperation op = do
-  Runtime {memory, pointer} <- get
+  Runtime {pointer} <- get
   arg1 <- getArg 0
   arg2 <- getArg 1
   target <- getTarget 2
   writeTarget target (arg1 `op` arg2)
   movePointer (pointer + 4)
-  return False
 
 exit :: Operation
-exit = return True
+exit = get >>= (\rt -> put rt {finished = True})
 
 input :: Operation
 input = do
@@ -150,7 +141,6 @@ input = do
   target <- getTarget 0
   writeTarget target ip
   movePointer (pointer + 2)
-  return False
 
 output :: Operation
 output = do
@@ -158,7 +148,6 @@ output = do
   value <- getArg 0
   addOutput value
   movePointer (pointer + 2)
-  return False
 
 jumpIf :: Bool -> Operation
 jumpIf cmp = do
@@ -170,7 +159,6 @@ jumpIf cmp = do
           then arg2
           else pointer + 3
   movePointer newPointer
-  return False
 
 compare :: (Int -> Int -> Bool) -> Operation
 compare cmp = do
@@ -184,15 +172,13 @@ compare cmp = do
        then 1
        else 0)
   movePointer (pointer + 4)
-  return False
 
 setRelativeBase :: Operation
 setRelativeBase = do
   arg1 <- getArg 0
-  Runtime {..} <- get
-  put (Runtime memory pointer (relativeBase + arg1) inputs outputs)
-  movePointer (pointer + 2)
-  return False
+  rt <- get
+  put rt {relativeBase = relativeBase rt + arg1}
+  movePointer (pointer rt + 2)
 
 opcodeCommand :: Opcode -> Operation
 opcodeCommand opcode =
@@ -215,7 +201,7 @@ getCommand = do
   let cmd = memory --> pointer
   return $ parseCommand cmd
 
-runCommand :: State Runtime Bool
+runCommand :: Operation
 runCommand = do
   Runtime {memory, pointer} <- get
   let cmd = memory --> pointer
@@ -224,25 +210,27 @@ runCommand = do
 
 runUntilFinished :: State Runtime [Int]
 runUntilFinished = do
-  finished <- runCommand
+  runCommand
+  Runtime {finished} <- get
   if finished
     then do
       Runtime {outputs} <- get
       return outputs
     else runUntilFinished
 
-runUntilOutput :: State Runtime Bool
+runUntilOutput :: State Runtime (Int, Bool)
 runUntilOutput = do
-  finished <- runCommand
-  Runtime {outputs} <- get
+  get >>= (\rt -> put rt {outputs = []})
+  runCommand
+  Runtime {outputs, finished} <- get
   if finished
-    then return True
+    then return (0, True)
     else if null outputs
            then runUntilOutput
-           else return False
+           else return (head outputs, False)
 
 initialize :: Program -> [Int] -> Runtime
-initialize prg = flip (Runtime (fromList $ zip [0 ..] prg) 0 0) []
+initialize prg = flip (Runtime (fromList $ zip [0 ..] prg) 0 0 False) []
 
 runProgram :: [Int] -> Program -> [Int]
 runProgram inputs prg = evalState runUntilFinished (initialize prg inputs)

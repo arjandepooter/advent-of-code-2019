@@ -27,9 +27,8 @@ main =
           evalState (getTarget 0) rt `shouldBe` 5
         it
           "should return the argpointer value + the relativeBase as the address" $ do
-          let Runtime {..} = initialize [201, 7, 0, 0] []
-          evalState (getTarget 0) (Runtime memory pointer 7 inputs outputs) `shouldBe`
-            14
+          let rt = initialize [201, 7, 0, 0] []
+          evalState (getTarget 0) rt {relativeBase = 7} `shouldBe` 14
       describe "writeTarget" $ do
         it "should update the target pointer with given value" $ do
           let rt = initialize [0, 0, 0, 0, 0, 0, 0] []
