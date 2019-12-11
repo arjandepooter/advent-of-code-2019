@@ -12,15 +12,8 @@ data Direction
   | Left
   deriving (Show, Enum, Eq)
 
-data Rotation
-  = Clockwise
-  | CounterClockWise
-  deriving (Show, Eq)
-
 setInput :: Int -> State Runtime ()
-setInput i = do
-  rt <- get
-  put $ rt {inputs = [i]}
+setInput i = get >>= (\rt -> put rt {inputs = [i]})
 
 moveDirection :: (Int, Int) -> Direction -> (Int, Int)
 moveDirection (x, y) direction = (x + dx, y + dy)
@@ -82,8 +75,7 @@ solve1 = length . runPaintJob empty
 
 solve2 :: Program -> String
 solve2 =
-  showPaintJob .
-  keysSet . M.filter (== 1) . runPaintJob (fromList [((0, 0), 1)])
+  showPaintJob . keysSet . M.filter (== 1) . runPaintJob (singleton (0, 0) 1)
 
 main :: IO ()
 main = do
