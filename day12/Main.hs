@@ -25,6 +25,9 @@ vecAdd :: Vector -> Vector -> Vector
 vecAdd (Vector x1 y1 z1) (Vector x2 y2 z2) =
   Vector (x1 + x2) (y1 + y2) (z1 + z2)
 
+lcm' :: [Int] -> Int
+lcm' = foldr lcm 1
+
 updateVelocity :: [Moon] -> Moon -> Moon
 updateVelocity moons moon = foldl f moon moons
   where
@@ -47,11 +50,25 @@ steps = iterate step
 potentialEnergy :: Moon -> Int
 potentialEnergy = uncurry (*) . bimap vecSum vecSum
 
+stepCoords :: (Vector -> Coord) -> [Moon] -> [Coord]
+stepCoords coord = concatMap ((\(a, b) -> [a, b]) . bimap coord coord)
+
+coordFrequency :: (Vector -> Coord) -> [Moon] -> Int
+coordFrequency coord moons =
+  (+ 1) .
+  length . takeWhile (/= toMatch) . fmap (stepCoords coord) . tail . steps $
+  moons
+  where
+    toMatch = stepCoords coord moons
+
+frequency :: [Moon] -> Int
+frequency moons = lcm' $ fmap (`coordFrequency` moons) [x, y, z]
+
 solve1 :: [Moon] -> Int
 solve1 = sum . fmap potentialEnergy . (!! 1000) . steps
 
 solve2 :: [Moon] -> Int
-solve2 moons = undefined
+solve2 = frequency
 
 coordParser :: Parser Coord
 coordParser = do
@@ -71,25 +88,28 @@ parseInput = parse (many vectorParser <* eof) ""
 tests :: IO ()
 tests =
   hspec $ do
+    let example1 =
+          [ (empty, Vector (-1) 0 2)
+          , (empty, Vector 2 (-10) (-7))
+          , (empty, Vector 4 (-8) 8)
+          , (empty, Vector 3 5 (-1))
+          ]
     describe "potentialEnergy" $ do
       it "should calculate the right amount" $ do
         let moon = (Vector (-3) (-2) 1, Vector 2 1 (-3))
         potentialEnergy moon `shouldBe` 36
     describe "step" $ do
       it "should return the example output" $ do
-        let moons =
-              [ (empty, Vector (-1) 0 2)
-              , (empty, Vector 2 (-10) (-7))
-              , (empty, Vector 4 (-8) 8)
-              , (empty, Vector 3 5 (-1))
-              ]
         let expectedOutput =
               [ (Vector 3 (-1) (-1), Vector 2 (-1) 1)
               , (Vector 1 3 3, Vector 3 (-7) (-4))
               , (Vector (-3) 1 (-3), Vector 1 (-7) 5)
               , (Vector (-1) (-3) 1, Vector 2 2 0)
               ]
-        step moons `shouldBe` expectedOutput
+        step example1 `shouldBe` expectedOutput
+    describe "frequency" $ do
+      it "should return the correct value for example1" $ do
+        frequency example1 `shouldBe` 2772
 
 main :: IO ()
 main = do
