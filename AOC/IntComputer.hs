@@ -210,11 +210,9 @@ runCommand = do
 runUntilFinished :: State Runtime [Int]
 runUntilFinished = do
   runCommand
-  Runtime {finished} <- get
+  Runtime {finished, outputs} <- get
   if finished
-    then do
-      Runtime {outputs} <- get
-      return outputs
+    then return outputs
     else runUntilFinished
 
 runUntilOutput :: State Runtime (Int, Bool)
