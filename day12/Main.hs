@@ -94,11 +94,11 @@ tests =
           , (empty, Vector 4 (-8) 8)
           , (empty, Vector 3 5 (-1))
           ]
-    describe "potentialEnergy" $ do
+    describe "potentialEnergy" $
       it "should calculate the right amount" $ do
         let moon = (Vector (-3) (-2) 1, Vector 2 1 (-3))
         potentialEnergy moon `shouldBe` 36
-    describe "step" $ do
+    describe "step" $
       it "should return the example output" $ do
         let expectedOutput =
               [ (Vector 3 (-1) (-1), Vector 2 (-1) 1)
@@ -107,9 +107,9 @@ tests =
               , (Vector (-1) (-3) 1, Vector 2 2 0)
               ]
         step example1 `shouldBe` expectedOutput
-    describe "frequency" $ do
-      it "should return the correct value for example1" $ do
-        frequency example1 `shouldBe` 2772
+    describe "frequency" $
+      it "should return the correct value for example1" $
+      frequency example1 `shouldBe` 2772
 
 main :: IO ()
 main = do

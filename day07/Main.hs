@@ -12,13 +12,12 @@ setInput rt ips = rt {inputs = inputs rt ++ ips}
 runAmplifierLoop :: Program -> [Int] -> Int
 runAmplifierLoop prg codes =
   (\(op, _, _) -> op) .
-  last .
-  takeWhile (\(_, finished, _) -> not finished) . scanl f (0, False, runtimes) $
-  [0 ..]
+  last . takeWhile (\(_, finished, _) -> not finished) . iterate f $
+  (0, False, runtimes)
   where
     runtimes = fmap (initialize prg . return) codes
-    f :: (Int, Bool, [Runtime]) -> a -> (Int, Bool, [Runtime])
-    f (input, _, rt:rts) _ =
+    f :: (Int, Bool, [Runtime]) -> (Int, Bool, [Runtime])
+    f (input, _, rt:rts) =
       let ((output, finished), rt') =
             runState runUntilOutput (setInput rt [input])
        in (output, finished, rts ++ [rt' {outputs = [], inputs = []}])
