@@ -59,8 +59,7 @@ neededOreWithLeftovers m (amount, chem) leftovers =
         (rAmount, rLeftovers) =
           neededOreWithLeftovers m (batches * amount, chem) leftovers
 
-binarySearch ::
-     (Show a, Show b, Integral a, Eq a, Ord b) => (a -> b) -> a -> a -> b -> a
+binarySearch :: (Integral a, Ord b) => (a -> b) -> a -> a -> b -> a
 binarySearch f low high threshold
   | (high - low) <= 1 || result == threshold = low
   | result > threshold = binarySearch f low trial threshold
