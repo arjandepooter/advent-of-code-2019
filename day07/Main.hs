@@ -15,7 +15,8 @@ runAmplifierLoop prg codes =
   last . takeWhile (\(_, finished, _) -> not finished) . iterate f $
   (0, False, runtimes)
   where
-    runtimes = fmap (initialize prg . return) codes
+    runtime = initialize prg
+    runtimes = fmap (setInput runtime . return) codes
     f :: (Int, Bool, [Runtime]) -> (Int, Bool, [Runtime])
     f (input, _, rt:rts) =
       let ((output, finished), rt') =

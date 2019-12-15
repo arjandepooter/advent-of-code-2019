@@ -34,7 +34,7 @@ updatePosition turn (x, y) direction =
 
 runPaintJob :: Map (Int, Int) Int -> Program -> Map (Int, Int) Int
 runPaintJob initial prg =
-  evalState (runPaintJob' initial ((0, 0), Up)) (initialize prg [])
+  evalState (runPaintJob' initial ((0, 0), Up)) (initialize prg)
   where
     runPaintJob' ::
          Map (Int, Int) Int

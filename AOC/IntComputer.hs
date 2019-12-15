@@ -118,6 +118,9 @@ popInput = do
   put rt {inputs = ips}
   return ip
 
+setInput :: [Int] -> State Runtime ()
+setInput ip = get >>= (\rt -> put $ rt {inputs = ip})
+
 addOutput :: Int -> State Runtime ()
 addOutput o = get >>= (\rt -> put rt {outputs = o : outputs rt})
 
@@ -226,11 +229,12 @@ runUntilOutput = do
            then runUntilOutput
            else return (head outputs, False)
 
-initialize :: Program -> [Int] -> Runtime
-initialize prg = flip (Runtime (fromList $ zip [0 ..] prg) 0 0 False) []
+initialize :: Program -> Runtime
+initialize prg = Runtime (fromList $ zip [0 ..] prg) 0 0 False [] []
 
 runProgram :: [Int] -> Program -> [Int]
-runProgram inputs prg = evalState runUntilFinished (initialize prg inputs)
+runProgram inputs prg =
+  evalState (setInput inputs >> runUntilFinished) (initialize prg)
 
 parseInput :: String -> Program
 parseInput = fmap read . splitOn ','

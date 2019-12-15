@@ -97,12 +97,12 @@ loopGame screen = do
 
 solve1 :: Program -> Int
 solve1 program =
-  let screenData = evalState (runGame M.empty) (initialize program [])
+  let screenData = evalState (runGame M.empty) (initialize program)
    in length . M.filter (== Block) . M.map toEnum $ screenData
 
 solve2 :: Program -> Int
 solve2 program =
-  let screen = evalState (playGame M.empty) (initialize program [])
+  let screen = evalState (playGame M.empty) (initialize program)
    in (M.!) screen (-1, 0)
 
 main :: IO ()
