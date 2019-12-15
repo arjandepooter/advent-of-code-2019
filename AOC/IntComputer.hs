@@ -7,6 +7,7 @@ module AOC.IntComputer
   , getTarget
   , runCommand
   , runProgram
+  , runUntilInput
   , runUntilOutput
   , runUntilFinished
   , parseInput
@@ -16,6 +17,7 @@ module AOC.IntComputer
   ) where
 
 import           AOC.Utils           (splitOn)
+import           Control.Monad       (unless)
 import           Control.Monad.State
 import           Data.Char           (digitToInt)
 import           Data.IntMap         (IntMap, alter, findWithDefault, fromList)
@@ -38,8 +40,8 @@ data ArgMode
 
 data Command =
   Command
-    { operation :: Operation
-    , argModes  :: [ArgMode]
+    { opcode   :: Opcode
+    , argModes :: [ArgMode]
     }
 
 data Runtime =
@@ -66,9 +68,7 @@ infixl 2 *->
 parseCommand :: Int -> Command
 parseCommand =
   (\(arg3:arg2:arg1:opcode) ->
-     Command
-       (opcodeCommand . read $ opcode)
-       (fmap charToArgMode [arg1, arg2, arg3])) .
+     Command (read opcode) (fmap charToArgMode [arg1, arg2, arg3])) .
   (\l -> replicate (5 - length l) '0' ++ l) . show
   where
     charToArgMode :: Char -> ArgMode
@@ -207,7 +207,8 @@ runCommand :: Operation
 runCommand = do
   Runtime {memory, pointer} <- get
   let cmd = memory --> pointer
-  let Command {operation} = parseCommand cmd
+  let Command {opcode} = parseCommand cmd
+  let operation = opcodeCommand opcode
   operation
 
 runUntilFinished :: State Runtime [Int]
@@ -228,6 +229,14 @@ runUntilOutput = do
     else if null outputs
            then runUntilOutput
            else return (head outputs, False)
+
+runUntilInput :: State Runtime ()
+runUntilInput = do
+  Command opcode _ <- getCommand
+  Runtime {inputs, finished} <- get
+  unless
+    ((opcode == 3 && null inputs) || finished)
+    (runCommand >> runUntilInput)
 
 initialize :: Program -> Runtime
 initialize prg = Runtime (fromList $ zip [0 ..] prg) 0 0 False [] []
