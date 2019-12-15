@@ -1,6 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 import           AOC.IntComputer
+import           AOC.Utils           (chunksOf)
 import           Control.Monad       (when)
 import           Control.Monad.State
 import           Data.List           (intercalate)
@@ -48,12 +49,11 @@ renderScreen screenData =
     screen = M.map toEnum screenData
     (maxX, maxY) = resolution screenData
 
-getTile :: State Runtime (Coord, Int)
-getTile = do
-  (x, _) <- runUntilOutput
-  (y, _) <- runUntilOutput
-  (tile, _) <- runUntilOutput
-  return ((x, y), tile)
+getTiles :: State Runtime [(Coord, Int)]
+getTiles = do
+  rt@Runtime {outputs} <- get
+  put rt {outputs = []}
+  return ((\(x:y:tile:_) -> ((x, y), tile)) <$> chunksOf 3 (reverse outputs))
 
 replaceInput :: Int -> State Runtime ()
 replaceInput n = get >>= (\rt -> put rt {inputs = [n]})
@@ -77,19 +77,17 @@ playGame screen = do
 
 setJoystickInput :: Screen -> State Runtime ()
 setJoystickInput screenData = do
-  let balls = M.keys . M.filter (== fromEnum Ball) $ screenData
-  let paddles = M.keys . M.filter (== fromEnum Paddle) $ screenData
-  let ballX = fst . head $ balls
-  let paddleX = fst . head $ paddles
-  if (not $ null balls) && (not $ null paddles)
-    then replaceInput (signum $ ballX - paddleX)
-    else return ()
+  let ballX = fst . head . M.keys . M.filter (== fromEnum Ball) $ screenData
+  let paddleX = fst . head . M.keys . M.filter (== fromEnum Paddle) $ screenData
+  replaceInput (signum $ ballX - paddleX)
 
 loopGame :: Screen -> State Runtime Screen
 loopGame screen = do
-  (coord, tile) <- getTile
-  let updatedScreen = M.insert coord tile screen
-  when (tile == 3 || tile == 4) (setJoystickInput updatedScreen)
+  runUntilInput
+  tiles <- getTiles
+  let updatedScreen =
+        foldl (\screen (coord, tile) -> M.insert coord tile screen) screen tiles
+  setJoystickInput updatedScreen
   Runtime {finished} <- get
   if finished
     then return updatedScreen
