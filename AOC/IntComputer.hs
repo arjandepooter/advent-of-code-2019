@@ -14,6 +14,8 @@ module AOC.IntComputer
   , initialize
   , setRelativeBase
   , writeTarget
+  , flushOutput
+  , setInput
   ) where
 
 import           AOC.Utils           (splitOn)
@@ -123,6 +125,12 @@ setInput ip = get >>= (\rt -> put $ rt {inputs = ip})
 
 addOutput :: Int -> State Runtime ()
 addOutput o = get >>= (\rt -> put rt {outputs = o : outputs rt})
+
+flushOutput :: State Runtime [Int]
+flushOutput = do
+  rt@Runtime {outputs} <- get
+  put $ rt {outputs = []}
+  return outputs
 
 mathOperation :: (Int -> Int -> Int) -> Operation
 mathOperation op = do
